@@ -1,6 +1,7 @@
 # dht-dce
 ![Build and release](https://github.com/hexahigh/dht-dce/actions/workflows/build&release.yml/badge.svg)
 [![Release](https://img.shields.io/github/release/hexahigh/dht-dce.svg)](https://github.com/hexahigh/dht-dce/releases)
+[![License](https://img.shields.io/github/license/hexahigh/dht-dce)](https://github.com/hexahigh/dht-dce/blob/main/LICENSE)
 [![Downloads](https://img.shields.io/github/downloads/hexahigh/dht-dce/total.svg)](https://github.com/hexahigh/dht-dce/releases)<br>
 A simple program that converts Discord History Tracker exports to Discord chat exporter's json format.
 
