@@ -82,7 +82,7 @@ var (
 
 var channelName string
 
-const version = "0.1.2"
+const version = "0.2"
 
 func main() {
 	flag.Parse()
