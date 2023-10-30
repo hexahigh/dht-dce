@@ -1,0 +1,75 @@
+name: Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      asset_paths: "dht-dce-windows-386,dht-dce-windows-amd64,dht-dce-linux-386,dht-dce-linux-amd64"
+    steps:
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.21.3
+
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: Get dependencies
+        run: go get -v -t -d ./...
+
+      - name: Build windows-386
+        run: GOOS=windows GOARCH=386 go build -v -o dht-dce-windows-386.exe .
+
+      - name: Build windows-amd64
+        run: GOOS=windows GOARCH=amd64 go build -v -o dht-dce-windows-amd64.exe .
+
+      - name: Build linux-386
+        run: GOOS=linux GOARCH=386 go build -v -o dht-dce-linux-386 .
+
+      - name: Build linux-amd64
+        run: GOOS=linux GOARCH=amd64 go build -v -o dht-dce-linux-amd64 .
+
+      - name: Upload the artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: dht-dce
+          path: |
+            dht-dce-windows-386.exe
+            dht-dce-windows-amd64.exe
+            dht-dce-linux-386
+            dht-dce-linux-amd64
+
+  upload:
+    name: Upload release
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Delete old release and tag
+        uses: dev-drprasad/delete-tag-and-release@v1.0.1
+        with:
+          delete_release: true
+          tag_name: latest_auto
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: build
+
+      - name: Release to GitHub
+        uses: ncipollo/release-action@v1
+        with:
+          name: Latest Autobuild
+          tag: latest_auto
+          commit: main
+          body: ${{ github.event.head_commit.message }}
+          artifacts: "build/dht-dce/dht-dce-windows-386.exe, build/dht-dce/dht-dce-windows-amd64.exe, build/dht-dce/dht-dce-linux-386, build/dht-dce/dht-dce-linux-amd64"
+          prerelease: true
