@@ -38,7 +38,7 @@ jobs:
       - name: Upload the artifact
         uses: actions/upload-artifact@v3
         with:
-          name: build
+          name: dht-dce
           path: |
             dht-dce-windows-386.exe
             dht-dce-windows-amd64.exe
