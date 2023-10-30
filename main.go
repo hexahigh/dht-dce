@@ -62,6 +62,13 @@ type Channel struct {
 	Topic      interface{} `json:"topic"`
 }
 
+type User struct {
+	ID            string `json:"id"`
+	Name          string `json:"name"`
+	AvatarURL     string `json:"avatarUrl"`
+	Discriminator string `json:"discriminator"`
+}
+
 type DateRange struct {
 	After  interface{} `json:"after"`
 	Before interface{} `json:"before"`
@@ -83,8 +90,9 @@ var (
 )
 
 var channelName string
+var user User
 
-const version = "0.2.1"
+const version = "0.2.2"
 
 func main() {
 	flag.Parse()
@@ -131,6 +139,7 @@ func main() {
 	}
 
 	jsonMessages := make([]JsonMessage, 0)
+
 	for _, msg := range messages {
 		timestampMillis, err := strconv.ParseInt(msg.Timestamp, 10, 64)
 		if err != nil {
@@ -138,8 +147,13 @@ func main() {
 		}
 
 		timestamp := time.Unix(0, timestampMillis*int64(time.Millisecond))
-
 		formattedTimestamp := timestamp.Format("2006-01-02T15:04:05.999-07:00")
+
+		err = db.QueryRow("SELECT id, name, avatar_url, discriminator FROM users WHERE id = ?", msg.SenderID).Scan(&user.ID, &user.Name, &user.AvatarURL, &user.Discriminator)
+		if err != nil {
+			log.Fatal(err)
+		}
+
 		jsonMsg := JsonMessage{
 			ID:              msg.MessageID,
 			Type:            "Default",
@@ -149,12 +163,12 @@ func main() {
 			Content:         msg.Content,
 			Author: Author{
 				ID:            msg.SenderID,
-				Name:          nil,
-				Discriminator: nil,
-				Nickname:      nil,
+				Name:          user.Name,
+				Discriminator: user.Discriminator,
+				Nickname:      user.Name,
 				Color:         nil,
 				IsBot:         false,
-				AvatarURL:     nil,
+				AvatarURL:     user.AvatarURL,
 			},
 			Attachments: []interface{}{},
 			Embeds:      []interface{}{},
