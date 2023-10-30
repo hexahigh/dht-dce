@@ -77,9 +77,12 @@ var (
 	versionFlag = flag.Bool("v", false, "prints the version")
 	dbPath      = flag.String("in", "input.db", "path to the input SQLite database")
 	jsonPath    = flag.String("out", "output.json", "path to the output JSON file")
+	channelID   = flag.String("channel", "", "channel ID")
 )
 
-const version = "0.1"
+var channelName string
+
+const version = "0.1.2"
 
 func main() {
 	flag.Parse()
@@ -87,6 +90,10 @@ func main() {
 	if *versionFlag {
 		fmt.Println(version)
 		return
+	}
+
+	if *channelID == "" {
+		log.Fatal("Channel ID is required")
 	}
 
 	fmt.Println("Opening database...")
@@ -99,10 +106,12 @@ func main() {
 	fmt.Println("Getting messages from database...")
 
 	rows, err := db.Query(`
-	SELECT m.message_id, m.sender_id, m.channel_id, m.text, m.timestamp, COALESCE(e.edit_timestamp, '') 
+	SELECT m.message_id, m.sender_id, m.channel_id, m.text, m.timestamp, COALESCE(e.edit_timestamp, ''), c.name
 	FROM messages m
 	LEFT JOIN edit_timestamps e ON m.message_id = e.message_id
-`)
+	LEFT JOIN channels c ON m.channel_id = c.id
+	WHERE m.channel_id = ?
+`, *channelID)
 
 	if err != nil {
 		log.Fatal(err)
@@ -112,9 +121,10 @@ func main() {
 	messages := make([]Message, 0)
 	for rows.Next() {
 		var msg Message
-		if err := rows.Scan(&msg.MessageID, &msg.SenderID, &msg.ChannelID, &msg.Content, &msg.Timestamp, &msg.EditTimestamp); err != nil {
+		if err := rows.Scan(&msg.MessageID, &msg.SenderID, &msg.ChannelID, &msg.Content, &msg.Timestamp, &msg.EditTimestamp, &channelName); err != nil {
 			log.Fatal(err)
 		}
+
 		messages = append(messages, msg)
 	}
 
@@ -152,11 +162,11 @@ func main() {
 			IconUrl: "null",
 		},
 		Channel: Channel{
-			ID:         messages[0].ChannelID, // Replace this with the actual channel ID from the database
+			ID:         *channelID,
 			Type:       "DirectTextChat",
 			CategoryID: "0",
 			Category:   "Private",
-			Name:       "null",
+			Name:       channelName,
 			Topic:      nil,
 		},
 		DateRange: DateRange{
