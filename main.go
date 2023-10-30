@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
+	"time"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -82,7 +84,7 @@ var (
 
 var channelName string
 
-const version = "0.2"
+const version = "0.2.1"
 
 func main() {
 	flag.Parse()
@@ -130,11 +132,19 @@ func main() {
 
 	jsonMessages := make([]JsonMessage, 0)
 	for _, msg := range messages {
+		timestampMillis, err := strconv.ParseInt(msg.Timestamp, 10, 64)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		timestamp := time.Unix(0, timestampMillis*int64(time.Millisecond))
+
+		formattedTimestamp := timestamp.Format("2006-01-02T15:04:05.999-07:00")
 		jsonMsg := JsonMessage{
 			ID:              msg.MessageID,
 			Type:            "Default",
-			Timestamp:       msg.Timestamp,
-			TimestampEdited: msg.EditTimestamp,
+			Timestamp:       formattedTimestamp,
+			TimestampEdited: formattedTimestamp,
 			IsPinned:        false,
 			Content:         msg.Content,
 			Author: Author{
