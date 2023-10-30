@@ -1,4 +1,4 @@
-# dht-to-dce
+# dht-dce
 A simple program that converts Discord History Tracker exports to Discord chat exporter's json format.
 
 ## Download
