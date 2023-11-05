@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -83,16 +85,17 @@ type JsonOutput struct {
 }
 
 var (
-	versionFlag = flag.Bool("v", false, "prints the version")
-	dbPath      = flag.String("in", "input.db", "path to the input SQLite database")
-	jsonPath    = flag.String("out", "output.json", "path to the output JSON file")
-	channelID   = flag.String("channel", "", "channel ID")
+	versionFlag  = flag.Bool("v", false, "prints the version")
+	dbPath       = flag.String("in", "input.db", "path to the input SQLite database")
+	jsonPath     = flag.String("out", "output.json", "path to the output JSON file")
+	useCidAsName = flag.Bool("id-as-name", false, "If set to true then the output json file will be the channel id. Overrides jsonPath.")
+	channelID    = flag.String("channel", "", "Comma separated list of one or more channel id")
 )
 
 var channelName string
 var user User
 
-const version = "0.2.2"
+const version = "0.2.4"
 
 func main() {
 	flag.Parse()
@@ -106,6 +109,8 @@ func main() {
 		log.Fatal("Channel ID is required")
 	}
 
+	channelIDS := strings.Split(*channelID, ",")
+
 	fmt.Println("Opening database...")
 	db, err := sql.Open("sqlite3", *dbPath)
 	if err != nil {
@@ -113,9 +118,19 @@ func main() {
 	}
 	defer db.Close()
 
-	fmt.Println("Getting messages from database...")
+	for i, id := range channelIDS {
 
-	rows, err := db.Query(`
+		if *useCidAsName == true {
+			*jsonPath = id + ".json"
+		} else {
+			ext := filepath.Ext(*jsonPath)
+			name := strings.TrimSuffix(*jsonPath, ext)
+			*jsonPath = name + strconv.Itoa(i) + ext
+		}
+
+		fmt.Println("Getting messages from database...")
+
+		rows, err := db.Query(`
 	SELECT m.message_id, m.sender_id, m.channel_id, m.text, m.timestamp, COALESCE(e.edit_timestamp, ''), c.name
 	FROM messages m
 	LEFT JOIN edit_timestamps e ON m.message_id = e.message_id
@@ -123,101 +138,102 @@ func main() {
 	WHERE m.channel_id = ?
 `, *channelID)
 
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer rows.Close()
-
-	messages := make([]Message, 0)
-	for rows.Next() {
-		var msg Message
-		if err := rows.Scan(&msg.MessageID, &msg.SenderID, &msg.ChannelID, &msg.Content, &msg.Timestamp, &msg.EditTimestamp, &channelName); err != nil {
-			log.Fatal(err)
-		}
-
-		messages = append(messages, msg)
-	}
-
-	jsonMessages := make([]JsonMessage, 0)
-
-	for _, msg := range messages {
-		timestampMillis, err := strconv.ParseInt(msg.Timestamp, 10, 64)
 		if err != nil {
 			log.Fatal(err)
 		}
+		defer rows.Close()
 
-		timestamp := time.Unix(0, timestampMillis*int64(time.Millisecond))
-		formattedTimestamp := timestamp.Format("2006-01-02T15:04:05.999-07:00")
+		messages := make([]Message, 0)
+		for rows.Next() {
+			var msg Message
+			if err := rows.Scan(&msg.MessageID, &msg.SenderID, &msg.ChannelID, &msg.Content, &msg.Timestamp, &msg.EditTimestamp, &channelName); err != nil {
+				log.Fatal(err)
+			}
 
-		err = db.QueryRow("SELECT id, name, avatar_url, discriminator FROM users WHERE id = ?", msg.SenderID).Scan(&user.ID, &user.Name, &user.AvatarURL, &user.Discriminator)
-		if err != nil {
-			log.Fatal(err)
+			messages = append(messages, msg)
 		}
 
-		jsonMsg := JsonMessage{
-			ID:              msg.MessageID,
-			Type:            "Default",
-			Timestamp:       formattedTimestamp,
-			TimestampEdited: formattedTimestamp,
-			IsPinned:        false,
-			Content:         msg.Content,
-			Author: Author{
-				ID:            msg.SenderID,
-				Name:          user.Name,
-				Discriminator: user.Discriminator,
-				Nickname:      user.Name,
-				Color:         nil,
-				IsBot:         false,
-				AvatarURL:     user.AvatarURL,
+		jsonMessages := make([]JsonMessage, 0)
+
+		for _, msg := range messages {
+			timestampMillis, err := strconv.ParseInt(msg.Timestamp, 10, 64)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			timestamp := time.Unix(0, timestampMillis*int64(time.Millisecond))
+			formattedTimestamp := timestamp.Format("2006-01-02T15:04:05.999-07:00")
+
+			err = db.QueryRow("SELECT id, name, avatar_url, discriminator FROM users WHERE id = ?", msg.SenderID).Scan(&user.ID, &user.Name, &user.AvatarURL, &user.Discriminator)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			jsonMsg := JsonMessage{
+				ID:              msg.MessageID,
+				Type:            "Default",
+				Timestamp:       formattedTimestamp,
+				TimestampEdited: formattedTimestamp,
+				IsPinned:        false,
+				Content:         msg.Content,
+				Author: Author{
+					ID:            msg.SenderID,
+					Name:          user.Name,
+					Discriminator: user.Discriminator,
+					Nickname:      user.Name,
+					Color:         nil,
+					IsBot:         false,
+					AvatarURL:     user.AvatarURL,
+				},
+				Attachments: []interface{}{},
+				Embeds:      []interface{}{},
+				Stickers:    []interface{}{},
+				Reactions:   []interface{}{},
+				Mentions:    []interface{}{},
+			}
+			jsonMessages = append(jsonMessages, jsonMsg)
+		}
+
+		jsonOutput := JsonOutput{
+			Guild: Guild{
+				ID:      "0",
+				Name:    "Direct Messages",
+				IconUrl: "null",
 			},
-			Attachments: []interface{}{},
-			Embeds:      []interface{}{},
-			Stickers:    []interface{}{},
-			Reactions:   []interface{}{},
-			Mentions:    []interface{}{},
+			Channel: Channel{
+				ID:         *channelID,
+				Type:       "DirectTextChat",
+				CategoryID: "0",
+				Category:   "Private",
+				Name:       channelName,
+				Topic:      nil,
+			},
+			DateRange: DateRange{
+				After:  nil,
+				Before: nil,
+			},
+			Messages:     jsonMessages,
+			MessageCount: len(jsonMessages),
 		}
-		jsonMessages = append(jsonMessages, jsonMsg)
-	}
 
-	jsonOutput := JsonOutput{
-		Guild: Guild{
-			ID:      "0",
-			Name:    "Direct Messages",
-			IconUrl: "null",
-		},
-		Channel: Channel{
-			ID:         *channelID,
-			Type:       "DirectTextChat",
-			CategoryID: "0",
-			Category:   "Private",
-			Name:       channelName,
-			Topic:      nil,
-		},
-		DateRange: DateRange{
-			After:  nil,
-			Before: nil,
-		},
-		Messages:     jsonMessages,
-		MessageCount: len(jsonMessages),
-	}
+		fmt.Println("Formatting JSON...")
+		jsonOutputBytes, err := json.MarshalIndent(jsonOutput, "", "  ")
+		if err != nil {
+			log.Fatal(err)
+		}
 
-	fmt.Println("Formatting JSON...")
-	jsonOutputBytes, err := json.MarshalIndent(jsonOutput, "", "  ")
-	if err != nil {
-		log.Fatal(err)
-	}
+		fmt.Println("Writing to file...")
+		file, err := os.Create(*jsonPath)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer file.Close()
 
-	fmt.Println("Writing to file...")
-	file, err := os.Create(*jsonPath)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer file.Close()
+		_, err = file.Write(jsonOutputBytes)
+		if err != nil {
+			log.Fatal(err)
+		}
 
-	_, err = file.Write(jsonOutputBytes)
-	if err != nil {
-		log.Fatal(err)
+		fmt.Println("Done with channel: " + id)
 	}
-
-	fmt.Println("Done.")
 }
