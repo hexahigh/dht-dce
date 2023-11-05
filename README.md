@@ -6,7 +6,8 @@
 A simple program that converts Discord History Tracker exports to Discord chat exporter's json format.
 
 ## Download
-You can download the latest version [here](https://github.com/hexahigh/dht-to-dce/releases/tag/latest_auto)
+You can download the latest nightly version [here.](https://github.com/hexahigh/dht-to-dce/releases/tag/latest_auto) (Recommended)<br>
+Or, you can download the latest release [here.](https://github.com/hexahigh/dht-to-dce/releases/latest)
 
 ## Usage
 <pre>
