@@ -35,6 +35,9 @@ jobs:
       - name: Build linux-amd64
         run: GOOS=linux GOARCH=amd64 go build -v -o dht-dce-linux-amd64 .
 
+      - name: Build wasm
+        run: GOOS=wasip1 GOARCH=wasm go build -v -o dht-dce.wasm .
+
       - name: Upload the artifact
         uses: actions/upload-artifact@v3
         with:
@@ -44,6 +47,7 @@ jobs:
             dht-dce-windows-amd64.exe
             dht-dce-linux-386
             dht-dce-linux-amd64
+            dht-dce.wasm
 
   upload:
     name: Upload release
@@ -71,5 +75,5 @@ jobs:
           tag: latest_auto
           commit: main
           body: ${{ github.event.head_commit.message }}
-          artifacts: "build/dht-dce/dht-dce-windows-386.exe, build/dht-dce/dht-dce-windows-amd64.exe, build/dht-dce/dht-dce-linux-386, build/dht-dce/dht-dce-linux-amd64"
+          artifacts: "build/dht-dce/dht-dce-windows-386.exe, build/dht-dce/dht-dce-windows-amd64.exe, build/dht-dce/dht-dce-linux-386, build/dht-dce/dht-dce-linux-amd64, build/dht-dce/dht-dce.wasm"
           prerelease: true
