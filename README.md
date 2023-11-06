@@ -23,7 +23,5 @@ Or, you can download the latest release [here.](https://github.com/hexahigh/dht-
 </pre>
 
 ## Current limitations
-<pre>
-  Can only export one channel at a time.
-  Does not support profile pictures or files.
-</pre>
+~~Can only export one channel at a time~~ (It can export multiple channels now but it is not implemented well).<br>
+Does not support profile pictures or files.
