@@ -10,6 +10,7 @@ You can download the latest nightly version [here.](https://github.com/hexahigh/
 Or, you can download the latest release [here.](https://github.com/hexahigh/dht-to-dce/releases/latest)
 
 ## Usage
+The program will do most of the work for you but you will need to manually fix the server names, server ids and channel categories.
 <pre>
   -channel string
         Comma separated list of one or more channel id
@@ -22,6 +23,5 @@ Or, you can download the latest release [here.](https://github.com/hexahigh/dht-
   -v    prints the version
 </pre>
 
-## Current limitations
-~~Can only export one channel at a time~~ (It can export multiple channels now but it is not implemented well).<br>
+## Current limitations<br>
 Does not support profile pictures or files.
